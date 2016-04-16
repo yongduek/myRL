@@ -14,8 +14,9 @@ actionStrings = {'left', 'right', 'up', 'down'}
 -- external dynamics.
 -- The state of the agent is forced to move when it goes to a location of cloumn c
 wind = {}
-wind.move = {0,0,0,1,1,1,2,2,1,0}
+wind.move = {0,0,0,-1,-1,-1,-2,-2,-1,0} -- up direction
 wind.action = function(c) -- column
+    if c<1 or c>map.nCols then return 0 end
     return wind.move[c]
 end
 
@@ -116,32 +117,44 @@ Q.print = function()
 end
  --
 agent={}
+agent.pos={-1,-1}
+agent.init = function()
+    agent.pos[2] = map.Start[2];
+    agent.pos[1] = map.Start[1];
+end
+agent.isGoal = function()
+    return agent.pos[1]==map.Goal[1] and agent.pos[2]==map.Goal[2]
+end
 agent.move = function (a)
     if a == 'left' then
-        local colnext = agent.position[2] - 1;
-        if 1 <= colnext then agent.position[2] = colnext end --[[no move]]
+        agent.pos[2] = agent.pos[2] - 1;
     elseif a == 'right' then
-        local colnext = agent.position[2] + 1;
-        if colnext <= map.nCols then agent.position[2] = colnext end --[[no move]]
+        agent.pos[2] = agent.pos[2] + 1;
     elseif a == 'up' then
-        local row = agent.position[1] - 1;
-        if 1 <= row then agent.position[1] = row; end
+        agent.pos[1] = agent.pos[1] - 1;
     elseif a == 'down' then
-        local row = agent.position[1] + 1;
-        if row <= map.nRows then agent.position[1] = row; end
+        agent.pos[1] = agent.pos[1] + 1;
     else
         print ('stupid action command:'); print (a)
     end
-    rwd = map.reward (agent.position)
-    return rwd, agent.position
-end
-agent.position={-1,-1}
-agent.init = function()
-    agent.position[2] = map.Start[2];
-    agent.position[1] = map.Start[1];
-end
-agent.isGoal = function()
-    return agent.position[1]==map.Goal[1] and agent.position[2]==map.Goal[2]
+    -- wind effect
+    agent.pos[1] = agent.pos[1] + wind.action (agent.pos[2])
+
+    -- correction, confine the agent insde the map
+    if agent.pos[1] < 1 then
+        agent.pos[1] = 1
+    elseif agent.pos[1] > map.nRows then
+        agent.pos[1] = map.nRows
+    end
+
+    if agent.pos[2] < 1 then
+        agent.pos[2] = 1
+    elseif agent.pos[2] > map.nCols then
+        agent.pos[2] = map.nCols
+    end
+
+    rwd = map.reward (agent.pos)
+    return rwd, agent.pos
 end
 
 -- Sarsa: On-policy TD control algorithm (Figure 6.9)
@@ -150,11 +163,11 @@ function TDlearning()
     -- place the agent at the initial location
     agent.init()
     local str = string.format('! TDLearning starts at (%d,%d)',
-                    agent.position[1], agent.position[2])
+                    agent.pos[1], agent.pos[2])
     local iter = 1
-    local S = {agent.position[1], agent.position[2]}
+    local S = {agent.pos[1], agent.pos[2]}
     local A = Q.chooseAction (S)
-    local locus = {{agent.position[1], agent.position[2]},A}
+    local locus = {{agent.pos[1], agent.pos[2]},A}
     local R, Snext, Anext
     repeat
         --print (string.format('Q action: %s', A))
@@ -168,11 +181,11 @@ function TDlearning()
         S = {Snext[1], Snext[2]} -- state update, must use copy asignment!
         A = Anext
 
-        locus[#locus+1] = {{agent.position[1], agent.position[2]},A}
+        locus[#locus+1] = {{agent.pos[1], agent.pos[2]},A}
         --print(locus[#locus])
         --[[
         print (string.format('[%d] agent now at (%d,%d) Goal(%d,%d)',
-                iter, agent.position[1], agent.position[2], map.Goal[1], map.Goal[2]))
+                iter, agent.pos[1], agent.pos[2], map.Goal[1], map.Goal[2]))
         --]]
         --if iter == 40 then break end
         iter = iter + 1
