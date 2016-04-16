@@ -1,6 +1,11 @@
 --[[
     Example 6.5: Windy GridWorld
     Reinforcement Learning: An Antroduction by Sutton 2015
+    
+    Lua Note
+        X={1,0}
+        Y=X
+        X[1]=0 -- now Y is also changed. Th assignment above shares the memory and was not a hard copy.
 ]]--
 
 nActions = 4
